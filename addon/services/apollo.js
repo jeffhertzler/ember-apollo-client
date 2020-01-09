@@ -43,7 +43,9 @@ function extractNewData(resultKey, { data, loading }) {
     // See https://github.com/bgentry/ember-apollo-client/issues/45
     return null;
   }
-  let keyedData = isNone(resultKey) ? data : data && get(data, resultKey);
+  let keyedData = isNone(resultKey)
+    ? { ...data }
+    : data && get(data, resultKey);
 
   return keyedData || {};
 }
@@ -60,10 +62,14 @@ function newDataFunc(observable, resultKey, resolve, unsubscribeFn = null) {
     }
 
     if (isNone(obj)) {
-      if (
-        !Object.prototype.hasOwnProperty.call(dataToSend, apolloObservableKey)
-      ) {
-        Object.defineProperty(dataToSend, apolloObservableKey, {
+      if (isArray(dataToSend)) {
+        obj = A(dataToSend);
+      } else {
+        obj = { ...dataToSend };
+      }
+
+      if (!Object.prototype.hasOwnProperty.call(obj, apolloObservableKey)) {
+        Object.defineProperty(obj, apolloObservableKey, {
           value: observable,
           writable: false,
         });
@@ -71,28 +77,18 @@ function newDataFunc(observable, resultKey, resolve, unsubscribeFn = null) {
 
       if (
         unsubscribeFn &&
-        !Object.prototype.hasOwnProperty.call(dataToSend, apolloUnsubscribeKey)
+        !Object.prototype.hasOwnProperty.call(obj, apolloUnsubscribeKey)
       ) {
-        Object.defineProperty(dataToSend, apolloUnsubscribeKey, {
+        Object.defineProperty(obj, apolloUnsubscribeKey, {
           value: unsubscribeFn,
           writable: false,
         });
       }
 
-      obj = dataToSend;
-
-      if (isArray(obj)) {
-        obj = A(obj);
-      }
-
       return resolve(obj);
     }
 
-    run(() => {
-      isArray(obj)
-        ? obj.setObjects(dataToSend)
-        : setProperties(obj, dataToSend);
-    });
+    isArray(obj) ? obj.setObjects(dataToSend) : setProperties(obj, dataToSend);
   };
 }
 
